@@ -1,3 +1,9 @@
+# Introduction
+This is an experimental plugin with only basic features for now.
+It uses the python-omemo plugin from gajim.
+
+It works with Gajim and Conversations.
+
 # TODO:
  - [ ] Check if Keys get destroyed after decryption
  - [ ] User can setup via config if he want to autotrust keys
@@ -16,3 +22,4 @@
  - [x] Get all own devices and save them
  - [x] Check the key amount and create new ones if needed
  - [ ] Check if <payload> tag in message or is KeyTransport
+ - [ ] File transfer
