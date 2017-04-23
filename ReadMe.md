@@ -1,0 +1,18 @@
+# TODO:
+ - [ ] Check if Keys get destroyed after decryption
+ - [ ] User can setup via config if he want to autotrust keys
+ - [ ] Not always try to build new session
+ - [x] Handle multiple device ids
+ - [ ] Remove the old signed prekey after amount of time
+ - [ ] Check if our device is in pep after my other device was added
+ - [x] Fix support for Gajim-Omemo
+ - [x] Support for Conversations Messaging
+ - [ ] Add support for Groupchat messaging
+ - [x] Add support for sending single user chat messaging
+ - [ ] Better exception handling and code cleaning
+ - [ ] Better Documentation
+ - [ ] Show Fingerprints to user
+ - [ ] Change trust level
+ - [x] Get all own devices and save them
+ - [x] Check the key amount and create new ones if needed
+ - [ ] Check if <payload> tag in message or is KeyTransport
