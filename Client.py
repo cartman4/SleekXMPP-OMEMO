@@ -34,7 +34,7 @@ class Client(ClientXMPP):
         self['xep_0060'].subscribe(None, NS_DEVICELIST)
         # Prepare OmemoSupport
         self['XEP_0384'].prepareOmemoSupport(self.ownJID)
-        #self.sendOmemoMessage("asdf@example.it", "hello")
+        #self.sendOmemoMessage("test@example.it", "hello")
 
 
 

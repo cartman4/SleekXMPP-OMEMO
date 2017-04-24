@@ -185,13 +185,14 @@ class XEP_0384(base_plugin):
     """
     def fetchDeviceList(self, targetJID):
         try:
-            result = self.xmpp['xep_0060'].get_item(None, NS_DEVICELIST, None)
+            result = self.xmpp['xep_0060'].get_item(targetJID, NS_DEVICELIST, None)
             # TODO: Check if item exists
             devicelist = extractDevices(result['pubsub']['items']['item']['payload'])
-            if self.xmpp.ownJID == targetJID:
+            print devicelist
+            if targetJID == self.xmpp.ownJID:
                 self.omemo.set_own_devices(devicelist)
             else:
-                self.omemo.set_devices(devicelist)
+                self.omemo.set_devices(targetJID,devicelist)
         except:
             logging.error('Could not retrieve device list from %s' % targetJID)
 
@@ -211,16 +212,17 @@ class XEP_0384(base_plugin):
 
     """
     def sendOmemoMessage(self,ownJID, toJID, msg):
-        # We need a Sqlite3 database for store information
-        db_connection = connect(DB_FILE)
-        omemo = OmemoState(ownJID, db_connection)
-        recipientIDs = omemo.device_list_for(toJID)
+        # Fetch device list
+        self.fetchDeviceList(toJID)
+        recipientIDs = self.omemo.device_list_for(toJID)
+        # TODO: Check for new fingerprints
+
         # We need the information bundle from every device of the recipient
         # And a session
         for dev in recipientIDs:
             bundle = self.fetchBundleInformation(toJID, str(dev))
-            omemo.build_session(toJID, dev, bundle)
-        msg_dict = omemo.create_msg(ownJID ,toJID, msg)
+            self.omemo.build_session(toJID, dev, bundle)
+        msg_dict = self.omemo.create_msg(ownJID ,toJID, msg)
         omemoMsg = omemoMsgDictToStanza(ownJID, msg_dict)
         self.xmpp.send(omemoMsg)
 

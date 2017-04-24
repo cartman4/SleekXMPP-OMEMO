@@ -35,6 +35,8 @@ MIN_PREKEY_AMOUNT = 80
 SPK_ARCHIVE_TIME = 86400 * 15  # 15 Days
 SPK_CYCLE_TIME = 86400         # 24 Hours
 
+log = logging.getLogger('omemo')
+
 
 class LiteAxolotlStore(AxolotlStore):
     def __init__(self, connection):
