@@ -1,0 +1,5 @@
+*.pyc
+*.db
+Plugins/*.pyc
+Stanzas/*.pyc
+omemo/*.pyc
