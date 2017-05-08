@@ -45,8 +45,8 @@ logAxolotl = logging.getLogger('axolotl')
 log = logging.getLogger('omemo')
 
 UNTRUSTED = 0
-TRUSTED = 2
-#UNDECIDED = 2
+TRUSTED = 1
+UNDECIDED = 2
 
 class OmemoState:
     def __init__(self, own_jid, connection):
@@ -104,6 +104,7 @@ class OmemoState:
         """
 
         self.device_ids[name] = devices
+
 
 
     def add_device(self, name, device_id):

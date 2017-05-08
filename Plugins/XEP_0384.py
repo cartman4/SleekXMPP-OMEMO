@@ -13,6 +13,7 @@ from sleekxmpp.xmlstream.matcher.xpath import MatchXPath
 import base64
 from Crypto.Random import random
 from Stanzas.helper import omemoMsgDictToStanza, extractDevices
+from omemo.state import TRUSTED, UNDECIDED, UNTRUSTED
 
 class XEP_0384(base_plugin):
     """
@@ -49,7 +50,7 @@ class XEP_0384(base_plugin):
         # support Omemo
         self.xmpp['xep_0030'].add_feature(NS_NOTIFY)
         # We need a Sqlite3 database for store information
-        self.db_connection = connect(DB_FILE)
+        self.db_connection = connect(str(self.xmpp.ownJID) + "_" + DB_FILE)
         # We init an OmemoState object
         self.omemo = OmemoState(ownJID, self.db_connection)
         # 1. Adding our device id to the list
@@ -62,8 +63,7 @@ class XEP_0384(base_plugin):
             # 4. Check if our deviceid is inside
             if self.omemo.own_device_id in self.omemo.own_devices:
                 break
-        # Check if enough prekeys are there
-        self.omemo.checkPreKeyAmount()
+        # Publish our own bundle
         self.publishOwnBundle()
 
 
@@ -176,7 +176,7 @@ class XEP_0384(base_plugin):
                 'iv'  : msg['OmemoMessage'].getIv(),
                 'payload' : base64.b64decode(msg['OmemoMessage']['payload'])
             }
-            self.omemo.decrypt_msg(msg_dict)
+            print self.omemo.decrypt_msg(msg_dict)
             # TODO: Make a valid Message Stanza out of the decrypted msg
 
 
@@ -188,7 +188,6 @@ class XEP_0384(base_plugin):
             result = self.xmpp['xep_0060'].get_item(targetJID, NS_DEVICELIST, None)
             # TODO: Check if item exists
             devicelist = extractDevices(result['pubsub']['items']['item']['payload'])
-            print devicelist
             if targetJID == self.xmpp.ownJID:
                 self.omemo.set_own_devices(devicelist)
             else:
@@ -215,12 +214,16 @@ class XEP_0384(base_plugin):
         # Fetch device list
         self.fetchDeviceList(toJID)
         recipientIDs = self.omemo.device_list_for(toJID)
-        # TODO: Check for new fingerprints
-
         # We need the information bundle from every device of the recipient
         # And a session
         for dev in recipientIDs:
             bundle = self.fetchBundleInformation(toJID, str(dev))
+            # TODO: Check for new fingerprints
+            record = self.omemo.store.loadSession(toJID, dev)
+            identity_key = record.getSessionState().getRemoteIdentityKey()
+            print self.omemo.isTrusted(toJID, dev)
+            if AUTOTRUST:
+                self.omemo.store.setTrust(identity_key, TRUSTED)
             self.omemo.build_session(toJID, dev, bundle)
         msg_dict = self.omemo.create_msg(ownJID ,toJID, msg)
         omemoMsg = omemoMsgDictToStanza(ownJID, msg_dict)

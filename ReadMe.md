@@ -5,11 +5,9 @@ It uses the python-omemo plugin from gajim.
 It works with Gajim and Conversations.
 
 # TODO:
- - [ ] Check if Keys get destroyed after decryption
- - [ ] User can setup via config if he want to autotrust keys
- - [ ] Not always try to build new session
+ - [x] User can setup via config if he want to autotrust keys
  - [x] Handle multiple device ids
- - [ ] Remove the old signed prekey after amount of time
+ - [x] Remove the old signed prekey after amount of time
  - [ ] Check if our device is in pep after my other device was added
  - [x] Fix support for Gajim-Omemo
  - [x] Support for Conversations Messaging
