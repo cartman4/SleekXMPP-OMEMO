@@ -34,10 +34,9 @@ class Client(ClientXMPP):
         self['xep_0060'].subscribe(None, NS_DEVICELIST)
         # Prepare OmemoSupport
         self['XEP_0384'].prepareOmemoSupport(self.ownJID)
-        self.sendOmemoMessage(DEBUG_RECIPIENTJID, "hello")
+        print "Finished setting up omemo!"
 
-
-
+        
 
     """ Pubsub: We recieved a Pubsub Event message
 
@@ -52,6 +51,9 @@ class Client(ClientXMPP):
         else:
             self['XEP_0384'].omemo.set_devices(devicelist)
 
+
+    def getDeviceID(self):
+        return self['XEP_0384'].omemo.own_device_id
 
 
     """ Send an OmemoMessage

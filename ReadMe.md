@@ -15,7 +15,7 @@ It works with Gajim and Conversations.
  - [x] Add support for sending single user chat messaging
  - [ ] Better exception handling and code cleaning
  - [ ] Better Documentation
- - [ ] Show Fingerprints to user
+ - [x] Show Fingerprints to user
  - [ ] Change trust level
  - [x] Get all own devices and save them
  - [x] Check the key amount and create new ones if needed

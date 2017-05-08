@@ -6,10 +6,7 @@ NS_BUNDLES = NS_OMEMO + '.bundles:'
 
 # We want to enable Debug Mode ?
 DEBUG_FLAG = False
-# Debug XMPP Account
-DEBUG_USER = ""
-DEBUG_PASS = ""
-DEBUG_RECIPIENTJID = ""
+
 
 # Sqlite3 Database file name
 DB_FILE = "example.db"

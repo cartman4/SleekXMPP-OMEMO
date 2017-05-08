@@ -5,6 +5,7 @@ from sqlite3 import connect
 from sleekxmpp.xmlstream.handler.callback import Callback
 from sleekxmpp.xmlstream import ET, tostring
 from config import *
+from axolotl.state.sessionrecord import SessionRecord
 import logging
 from sleekxmpp import Message
 from Stanzas.OmemoMessage import OmemoMessage
@@ -14,6 +15,8 @@ import base64
 from Crypto.Random import random
 from Stanzas.helper import omemoMsgDictToStanza, extractDevices
 from omemo.state import TRUSTED, UNDECIDED, UNTRUSTED
+import binascii
+
 
 class XEP_0384(base_plugin):
     """
@@ -40,6 +43,53 @@ class XEP_0384(base_plugin):
 
 
 
+    def getOwnFingerprint(self):
+        fpr = binascii.hexlify(
+                self.omemo.store.getIdentityKeyPair()
+                .getPublicKey().serialize()
+            )
+        return self.human_hash(fpr[2:])
+
+
+    def getAllFingerprintsFor(self, jid):
+        session_db = self.omemo.store.getSessionsFromJid(jid)
+        results = {}
+        for item in session_db:
+            _id, jid, deviceid, record, active = item
+            active = bool(active)
+            identity_key = SessionRecord(serialized=record).getSessionState().getRemoteIdentityKey()
+            fpr = binascii.hexlify(identity_key.getPublicKey().serialize())
+            fpr = self.human_hash(fpr[2:])
+            results[deviceid] = {'active': active, 'fingerprint': fpr}
+        return results
+
+
+    def getFingerprintForDevice(self, jid, deviceID):
+        session_db = self.omemo.store.getSessionsFromJid(jid)
+        for item in session_db:
+            _id, jid, deviceid, record, active = item
+            if int(deviceID) == int(deviceid):
+                active = bool(active)
+                identity_key = SessionRecord(serialized=record).getSessionState().getRemoteIdentityKey()
+                fpr = binascii.hexlify(identity_key.getPublicKey().serialize())
+                fpr = self.human_hash(fpr[2:])
+                return fpr, active
+                break
+        return
+
+
+
+    def human_hash(self,fpr):
+        fpr = fpr.upper()
+        fplen = len(fpr)
+        wordsize = fplen // 8
+        buf = ''
+        for w in range(0, fplen, wordsize):
+            buf += '{0} '.format(fpr[w:w + wordsize])
+        return buf.rstrip()
+
+
+
 
     """
         We prepare Stuff for Omemo Support
@@ -50,7 +100,7 @@ class XEP_0384(base_plugin):
         # support Omemo
         self.xmpp['xep_0030'].add_feature(NS_NOTIFY)
         # We need a Sqlite3 database for store information
-        self.db_connection = connect(str(self.xmpp.ownJID) + "_" + DB_FILE)
+        self.db_connection = connect(str(self.xmpp.ownJID) + "_" + DB_FILE, check_same_thread=False)
         # We init an OmemoState object
         self.omemo = OmemoState(ownJID, self.db_connection)
         # 1. Adding our device id to the list
@@ -90,7 +140,7 @@ class XEP_0384(base_plugin):
     """
     def fetchBundleInformation(self, to, device_id):
         # TODO: Check if bundle is complete
-        result = self.xmpp['xep_0060'].get_item(to, NS_BUNDLES + device_id, None)
+        result = self.xmpp['xep_0060'].get_item(to, NS_BUNDLES + str(device_id), None)
         bundle = {}
         for item in result['pubsub']['items']['substanzas']:
             xml_bundle = item['payload']
@@ -176,6 +226,16 @@ class XEP_0384(base_plugin):
                 'iv'  : msg['OmemoMessage'].getIv(),
                 'payload' : base64.b64decode(msg['OmemoMessage']['payload'])
             }
+
+            fpr , active = self.getFingerprintForDevice(senderJID, senderDevId)
+            print "==============="
+            print "# New Message #"
+            print "==============="
+            print "Recipient Account: %s" % self.xmpp.ownJID
+            print "Sender JID: %s" % senderJID
+            print "Sender DeviceID: %s" % senderDevId
+            print "Fingerprint: %s" % fpr
+            print "Trusted: %s" % self.omemo.isTrusted(senderJID, senderDevId)
             print self.omemo.decrypt_msg(msg_dict)
             # TODO: Make a valid Message Stanza out of the decrypted msg
 
@@ -211,21 +271,33 @@ class XEP_0384(base_plugin):
 
     """
     def sendOmemoMessage(self,ownJID, toJID, msg):
+        # We need a Sqlite3 database for store information
+        db_connection = connect(str(self.xmpp.ownJID) + "_" + DB_FILE)
+        # We init an OmemoState object
+        omemo = OmemoState(ownJID, db_connection)
         # Fetch device list
         self.fetchDeviceList(toJID)
-        recipientIDs = self.omemo.device_list_for(toJID)
+        recipientIDs = omemo.device_list_for(toJID)
         # We need the information bundle from every device of the recipient
         # And a session
         for dev in recipientIDs:
             bundle = self.fetchBundleInformation(toJID, str(dev))
-            # TODO: Check for new fingerprints
-            record = self.omemo.store.loadSession(toJID, dev)
+            omemo.build_session(toJID, dev, bundle)
+            record = omemo.store.loadSession(toJID, dev)
             identity_key = record.getSessionState().getRemoteIdentityKey()
-            print self.omemo.isTrusted(toJID, dev)
+            #print self.omemo.isTrusted(toJID, dev)
             if AUTOTRUST:
-                self.omemo.store.setTrust(identity_key, TRUSTED)
-            self.omemo.build_session(toJID, dev, bundle)
-        msg_dict = self.omemo.create_msg(ownJID ,toJID, msg)
+                omemo.store.setTrust(identity_key, TRUSTED)
+        #Send message to own devices to
+        for ownDev in omemo.own_devices:
+            bundle = self.fetchBundleInformation(ownJID, ownDev)
+            omemo.build_session(ownJID, ownDev, bundle)
+            record2 = omemo.store.loadSession(ownJID, ownDev)
+            identity_key = record2.getSessionState().getRemoteIdentityKey()
+            if AUTOTRUST:
+                omemo.store.setTrust(identity_key, TRUSTED)
+
+        msg_dict = omemo.create_msg(ownJID ,toJID, msg)
         omemoMsg = omemoMsgDictToStanza(ownJID, msg_dict)
         self.xmpp.send(omemoMsg)
 
